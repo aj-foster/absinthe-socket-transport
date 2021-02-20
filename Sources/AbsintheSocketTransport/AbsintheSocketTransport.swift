@@ -6,7 +6,7 @@ import SwiftPhoenixClient
 public class AbsintheSocketTransport {
 
   //
-  // Instance Variables
+  // MARK: - Instance Variables
   //
 
   // Transports
@@ -22,10 +22,11 @@ public class AbsintheSocketTransport {
   private var cancelledSubscriptions: [String] = []
 
   //
-  // Initializers
+  // MARK: - Initializers
   //
 
   /**
+   * Opens a socket to the given `endpoint` and joins the Absinthe channel.
    * Mirrors the `SwiftPhoenixClient.Socket` API.
    *
    * - parameter endpoint: URL of the GraphQL websocket endpoint, including a trailing `/websocket`
@@ -39,6 +40,8 @@ public class AbsintheSocketTransport {
   }
 
   /**
+   * Opens a socket to the given `endpoint` and joins the Absinthe channel.
+   * Using closed params, we can update params for future reconnections.
    * Mirrors the `SwiftPhoenixClient.Socket` API.
    *
    * - parameter endpoint: URL of the GraphQL websocket endpoint, including a trailing `/websocket`
@@ -59,9 +62,10 @@ public class AbsintheSocketTransport {
   }
 
   //
-  // Event Handlers: Socket
+  // MARK: - Event Handlers: Socket
   //
 
+  // On connection, join the Absinthe channel.
   private func socketDidConnect() {
     if !self.joined {
       self.joined = true
@@ -72,68 +76,34 @@ public class AbsintheSocketTransport {
     }
   }
 
+  // Handle messages with subscription data (not handled by the channel).
   private func socketDidReceiveMessage(_ message: Message) {
-    // Ignore any messages that are not incoming subscription data.
-    if message.event != Events.subscription { return }
-
-    // Call registered handlers for the given subscription ID.
-    self.subscriptionHandlers[message.topic]?(message)
+    if message.event == Events.subscription {
+      self.subscriptionHandlers[message.topic]?(message)
+    }
   }
 
   //
-  // Event Handlers: Channel
+  // MARK: - Event Handlers: Channel
   //
 
+  // When joining the channel, send any queued operations.
   private func channelDidJoin(_ message: Message) {
     self.outgoing.forEach { $0() }
   }
 
+  // Log channel errors. `SwiftPhoenixClient` will handle retries.
   private func channelDidError(_ message: Message) {
     os_log("Error while joining Absinthe channel: %s", message.payload.description)
   }
 
+  // Log channel timeouts. `SwiftPhoenixClient` will handle retries.
   private func channelDidTimeout(_ message: Message) {
     os_log("Error while joining Absinthe channel (timeout): %s", message.payload.description)
   }
 
   //
-  // Operations
-  //
-
-  private func createOperation<Operation: GraphQLOperation>(_ op: Operation) -> Payload {
-    var payload: Payload
-    payload = [ "query": op.queryDocument ]
-
-    if let variables = op.variables {
-      payload += [ "variables": variables ]
-    }
-
-    return payload
-  }
-
-  private func createUnsubscribe(id: String) -> Payload {
-    return [ "subscriptionId": id ] // Do we need to strip off __absinthe__:doc:?
-  }
-
-  private func parseMessage(_ payload: Payload) -> Result<JSONObject, Error> {
-    guard
-      let status = payload["status"] as? String,
-      let response = payload["response"] as? JSONObject
-    else {
-      os_log("Error while parsing channel message")
-      return .failure(GraphQLError(["message": "Error while parsing response"]))
-    }
-
-    switch status {
-    case "ok":
-      return .success(response)
-    default:
-      return .failure(GraphQLError(response))
-    }
-  }
-
-  //
-  // Subscriptions
+  // MARK: - Subscriptions
   //
 
   /**
@@ -143,7 +113,7 @@ public class AbsintheSocketTransport {
    */
   public func unsubscribe(_ ref: String) {
     if let id = self.subscriptions[ref] {
-      let payload = createUnsubscribe(id: id)
+      let payload = AbsintheMessage.unsubscribe(id: id)
       queue.async {
         self.channel.push(Events.unsubscribe, payload: payload)
         self.subscriptions.removeValue(forKey: ref)
@@ -151,32 +121,6 @@ public class AbsintheSocketTransport {
     } else {
       self.cancelledSubscriptions.append(ref)
     }
-  }
-}
-
-/**
- * Provides a cancellable task for all operations. In particular, we can cancel (unsubscribe) from subscriptions.
- */
-class Subscription: Cancellable {
-  let ref: String
-  let transport: AbsintheSocketTransport
-
-  /**
-   * Create a new task for the given operation.
-   */
-  init(
-    _ transport: AbsintheSocketTransport,
-    _ ref: String
-  ) {
-    self.transport = transport
-    self.ref = ref
-  }
-
-  /**
-   * Cancel the subscription. Has no effect on queries and mutations.
-   */
-  public func cancel() {
-    transport.unsubscribe(ref)
   }
 }
 
@@ -205,7 +149,7 @@ extension AbsintheSocketTransport: NetworkTransport {
 
     case .subscription:
       let id = socket.makeRef()
-      cancellable = Subscription(self, id)
+      cancellable = AbsintheSubscription(self, id)
 
       sendOperation = { [weak self] in
         self?.subscribe(operation: operation, subscriptionId: id, completion: completionAsync)
@@ -225,7 +169,7 @@ extension AbsintheSocketTransport: NetworkTransport {
     operation: Operation,
     completion: @escaping (_ result: Result<GraphQLResult<Operation.Data>, Error>) -> Void
   ) where Operation : GraphQLOperation {
-    let payload = createOperation(operation)
+    let payload = AbsintheMessage.fromOperation(operation)
 
     self.channel
       .push(Events.doc, payload: payload)
@@ -252,7 +196,7 @@ extension AbsintheSocketTransport: NetworkTransport {
     subscriptionId: String,
     completion: @escaping (_ result: Result<GraphQLResult<Operation.Data>, Error>) -> Void
   ) where Operation: GraphQLOperation {
-    let payload = createOperation(operation)
+    let payload = AbsintheMessage.fromOperation(operation)
 
     self.channel
       .push(Events.doc, payload: payload)

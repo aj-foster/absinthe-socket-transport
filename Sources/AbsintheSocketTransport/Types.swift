@@ -1,7 +1,7 @@
 import Foundation
 
 //
-// Channel Topics
+// MARK: - Channel Topics
 //
 
 enum Topic: String {
@@ -15,7 +15,7 @@ struct Topics {
 }
 
 //
-//  Message Events
+// MARK: - Message Events
 //
 
 enum Event: String {
@@ -33,7 +33,7 @@ struct Events {
 }
 
 //
-// Message Data Keys
+// MARK: - Message Data Keys
 //
 
 enum Key: String {
