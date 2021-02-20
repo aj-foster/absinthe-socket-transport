@@ -62,6 +62,19 @@ public class AbsintheSocketTransport {
   }
 
   //
+  // MARK: - Debugging
+  //
+
+  /**
+   * Begin logging every incoming message.
+   *
+   * Note that this cannot be disabled once enabled.
+   */
+  public func enableDebug() {
+    self.socket.delegateOnMessage(to: self) { target, message in target.socketDidReceiveMessageDebug(message)}
+  }
+
+  //
   // MARK: - Event Handlers: Socket
   //
 
@@ -81,6 +94,18 @@ public class AbsintheSocketTransport {
     if message.event == Events.subscription {
       self.subscriptionHandlers[message.topic]?(message)
     }
+  }
+
+  // Log all incoming messages.
+  private func socketDidReceiveMessageDebug(_ message: Message) {
+    print("""
+    --Incoming Message--
+    Topic: \(message.topic)
+    Event: \(message.event) (ref \(message.ref)
+    Status: \(message.status ?? "Unknown")
+    Payload: \(message.payload)
+    --End Message--
+    """)
   }
 
   //
