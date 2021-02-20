@@ -149,8 +149,6 @@ public class AbsintheSocketTransport {
   }
 }
 
-typealias Outgoing = () -> Void
-
 extension AbsintheSocketTransport: NetworkTransport {
   public func send<Operation>(operation: Operation, cachePolicy: CachePolicy, contextIdentifier: UUID?, callbackQueue: DispatchQueue, completionHandler: @escaping (Result<GraphQLResult<Operation.Data>, Error>) -> Void) -> Cancellable where Operation : GraphQLOperation {
     var cancellable: Cancellable
@@ -199,13 +197,10 @@ extension AbsintheSocketTransport: NetworkTransport {
     self.channel
       .push(Events.doc, payload: payload)
       .receive("ok") { message in
-        completion(
-          AbsintheMessage.parseResponse(operation: operation, payload: message.payload)
-        )
+        completion(AbsintheMessage.parseResponse(operation: operation, message: message))
       }
       .receive("error") { message in
-        let data = message.payload["response"] as! JSONObject
-        completion(.failure(AbsintheError(kind: .queryError, payload: data)))
+        completion(AbsintheMessage.parseResponse(operation: operation, message: message))
       }
   }
 
@@ -218,33 +213,20 @@ extension AbsintheSocketTransport: NetworkTransport {
 
     self.channel
       .push(Events.doc, payload: payload)
-      .delegateReceive("ok", to: self) { target, message in
-        if
-          let data = message.payload["response"] as? JSONObject,
-          let subId = data["subscriptionId"] as? String
-        {
-          self.subscriptions[subscriptionId] = subId
-          self.subscriptionHandlers[subId] = { message in
-            let data = message.payload["result"] as! JSONObject
-            let response = GraphQLResponse(operation: operation, body: data)
-
-            do {
-              let graphQLResult = try response.parseResultFast()
-              completion(.success(graphQLResult))
-            } catch {
-              let error = AbsintheError(kind: .parseError, payload: data)
-              completion(.failure(error))
-            }
+      .receive("ok") { [weak self] message in
+        if case let .success(subId) = AbsintheMessage.parseSubscriptionStart(message) {
+          self?.subscriptions[subscriptionId] = subId
+          self?.subscriptionHandlers[subId] = { message in
+            completion(AbsintheMessage.parseSubscriptionResult(operation: operation, message: message))
           }
 
-          if self.cancelledSubscriptions.contains(subscriptionId) {
-            self.unsubscribe(subscriptionId)
+          if self?.cancelledSubscriptions.contains(subscriptionId) == true {
+            self?.unsubscribe(subscriptionId)
           }
         }
       }
-      .delegateReceive("error", to: self) { target, message in
-        let data = message.payload["response"] as! JSONObject
-        completion(.failure(AbsintheError(kind: .queryError, payload: data)))
+      .receive("error") { message in
+        completion(AbsintheMessage.parseResponse(operation: operation, message: message))
       }
   }
 }
