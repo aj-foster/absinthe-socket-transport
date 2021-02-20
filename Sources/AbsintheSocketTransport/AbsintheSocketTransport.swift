@@ -101,7 +101,7 @@ public class AbsintheSocketTransport {
     print("""
     --Incoming Message--
     Topic: \(message.topic)
-    Event: \(message.event) (ref \(message.ref)
+    Event: \(message.event) (ref \(message.ref))
     Status: \(message.status ?? "Unknown")
     Payload: \(message.payload)
     --End Message--
@@ -198,19 +198,12 @@ extension AbsintheSocketTransport: NetworkTransport {
 
     self.channel
       .push(Events.doc, payload: payload)
-      .delegateReceive("ok", to: self) { target, message in
-        let data = message.payload["response"] as! JSONObject
-        let response = GraphQLResponse(operation: operation, body: data)
-
-        do {
-          let graphQLResult = try response.parseResultFast()
-          completion(.success(graphQLResult))
-        } catch {
-          let error = AbsintheError(kind: .parseError, payload: data)
-          completion(.failure(error))
-        }
+      .receive("ok") { message in
+        completion(
+          AbsintheMessage.parseResponse(operation: operation, payload: message.payload)
+        )
       }
-      .delegateReceive("error", to: self) { target, message in
+      .receive("error") { message in
         let data = message.payload["response"] as! JSONObject
         completion(.failure(AbsintheError(kind: .queryError, payload: data)))
       }
