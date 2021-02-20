@@ -1,3 +1,3 @@
-# absinthe-socket-transport
+# Absinthe Socket Transport
 
-A description of this package.
+A `NetworkTransport` implementation for Absinthe using Phoenix Sockets / Channels.
