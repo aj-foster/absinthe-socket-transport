@@ -2,7 +2,7 @@
 
 A `NetworkTransport` implementation for using Phoenix + Absinthe with Apollo's Swift library.
 
-**Warning**: This library is experimental, and developed by an _advanced beginner_ in Swift. Contributions are welcome.
+**Warning**: This library is experimental, and developed by a _beginner_ in Swift. Contributions are welcome.
 
 ---
 
@@ -29,4 +29,27 @@ Note that this package has fairly strict version dependencies on `SwiftPhoenixCl
 
 ### Usage
 
+To use this package, add the following import statement:
 
+```swift
+import AbsintheSocketTransport
+```
+
+Then, use the `AbsintheSocketTransport` class as a `NetworkTransport` when setting up the client:
+
+```swift
+let transport = AbsintheSocketTransport(endpoint, params: ["token": token])
+let client = ApolloClient(networkTransport: transport, store: ApolloStore.init())
+```
+
+Although untested, this transport might also work as part of a `SplitNetworkTransport`.
+
+For debugging purposes, you can enable a printout of all socket messages (including keepalives):
+
+```swift
+transport.enableDebug()
+```
+
+### Contributing
+
+As noted above, contributions are welcome. If you propose code changes, please help by also explaining any relevant best practices and including links to documentation where appropriate. For more information, please see [the contribution guidelines](CONTRIBUTING.md).
