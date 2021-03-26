@@ -50,9 +50,9 @@ public class AbsintheSocketTransport {
    */
   public init (
     _ endpoint: String,
-    closedParams: PayloadClosure = { return [:] }
+    closedParams: @escaping PayloadClosure = { return [:] }
   ) {
-    self.socket = SwiftPhoenixClient.Socket.init(endpoint)
+    self.socket = SwiftPhoenixClient.Socket.init(endpoint, paramsClosure: closedParams)
     self.channel = socket.channel(Topics.absinthe)
 
     self.socket.delegateOnOpen(to: self) { target in target.socketDidConnect() }
