@@ -47,10 +47,13 @@ public class AbsintheSocketTransport {
    * - parameter endpoint: URL of the GraphQL websocket endpoint, including a trailing `/websocket`
    * - parameter closedParams: Optional closure with parameters to include with the socket request. Use this
    *   to potentially update params prior to reconnections of the socket.
+   * - parameter connectOnInit: Optional flag to prevent automatically connecting to the socket on initialization.
+   *   By default, the socket will connect automatically (`true`).
    */
   public init (
     _ endpoint: String,
-    closedParams: @escaping PayloadClosure = { return [:] }
+    closedParams: @escaping PayloadClosure = { return [:] },
+    connectOnInit: Bool = true
   ) {
     self.socket = SwiftPhoenixClient.Socket.init(endpoint, paramsClosure: closedParams)
     self.channel = socket.channel(Topics.absinthe)
@@ -58,7 +61,28 @@ public class AbsintheSocketTransport {
     self.socket.delegateOnOpen(to: self) { target in target.socketDidConnect() }
     self.socket.delegateOnMessage(to: self) { target, message in target.socketDidReceiveMessage(message) }
 
+    if connectOnInit {
+      self.socket.connect()
+    }
+  }
+
+  //
+  // MARK: - Connection
+  //
+
+  /**
+   * Manually initiate a connection to the socket. Use this if the socket was initialized with
+   * `connectOnInit` set to `false` or if the socket was manually disconnected.
+   */
+  public func connect() {
     self.socket.connect()
+  }
+
+  /**
+   * Manually close the connection to the socket.
+   */
+  public func disconnect() {
+    self.socket.disconnect()
   }
 
   //
