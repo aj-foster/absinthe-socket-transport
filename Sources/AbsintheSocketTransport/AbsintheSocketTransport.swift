@@ -3,6 +3,7 @@ import Apollo
 import Foundation
 import SwiftPhoenixClient
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, *)
 public class AbsintheSocketTransport {
 
   //
@@ -64,6 +65,10 @@ public class AbsintheSocketTransport {
     if connectOnInit {
       self.socket.connect()
     }
+  }
+
+  deinit {
+    self.socket.disconnect()
   }
 
   //

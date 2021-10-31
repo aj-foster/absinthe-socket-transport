@@ -1,15 +1,71 @@
 import XCTest
 @testable import AbsintheSocketTransport
 
-final class AbsintheSocketTransportTests: XCTestCase {
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-//        XCTAssertEqual(AbsintheSocketTransport().text, "Hello, World!")
+final class AbsintheSocketTransportTests: ASTTestCase {
+
+  //
+  // Lifecycle
+  //
+
+  override class func setUp() {
+    super.setUp()
+    mockServer = MockServer(port: 8123)
+    mockServer.start()
+  }
+
+  override func setUp() {
+    super.setUp()
+    mockServer = AbsintheSocketTransportTests.mockServer
+  }
+
+  override func tearDown() {
+    mockServer.close()
+    super.tearDown()
+  }
+
+  override class func tearDown() {
+    super.tearDown()
+    mockServer.stop()
+  }
+
+  //
+  // Tests: Connect
+  //
+
+  func testConnectOnInitByDefault() {
+    var transport: AbsintheSocketTransport?
+
+    assertConnectionOpen {
+      transport = AbsintheSocketTransport("ws://localhost:8123")
     }
 
-    static var allTests = [
-        ("testExample", testExample),
-    ]
+    transport?.disconnect()
+  }
+
+  func testConnectOnInitFalse() {
+    let transport = AbsintheSocketTransport("ws://localhost:8123", connectOnInit: false)
+    assertDisconnected()
+
+    assertConnectionOpen {
+      transport.connect()
+    }
+
+    transport.disconnect()
+  }
+
+  //
+  // Tests: Channel
+  //
+
+  func testJoinsChannel() {
+    let transport = AbsintheSocketTransport("ws://localhost:8123", connectOnInit: false)
+
+    assertReceiveMessage(action: {
+      transport.connect()
+    }, test: { message in
+      message =~ ["event": "phx_join", "topic": "__absinthe__:control"]
+    })
+
+    transport.disconnect()
+  }
 }
