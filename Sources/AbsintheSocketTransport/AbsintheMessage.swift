@@ -57,7 +57,7 @@ enum AbsintheMessage {
     operation: Operation,
     message: Message
   ) -> Result<GraphQLResult<Operation.Data>, Error> {
-    guard let response = message.payload["response"] as? [String: Any]
+    guard let response = message.payload as? [String: Any]
     else {
       return .failure(AbsintheError(kind: .parseError, payload: message.payload))
     }
@@ -76,16 +76,11 @@ enum AbsintheMessage {
    * - returns: Result with the subscription ID
    */
   static func parseSubscriptionStart(_ message: Message) -> Result<String, Error> {
-    guard
-      message.payload["status"] as? String == "ok"
-    else {
+    guard message.status == "ok" else {
       return .failure(AbsintheError(kind: .queryError, payload: message.payload))
     }
 
-    guard
-      let response = message.payload["response"] as? [String: Any],
-      let id = response["subscriptionId"] as? String
-    else {
+    guard let id = message.payload["subscriptionId"] as? String else {
       return .failure(AbsintheError(kind: .parseError, payload: message.payload))
     }
 
