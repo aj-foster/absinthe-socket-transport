@@ -63,7 +63,7 @@ final class AbsintheSocketTransportTests: ASTTestCase {
     assertReceiveMessage(action: {
       transport.connect()
     }, test: { message in
-      message =~ ["event": "phx_join", "topic": "__absinthe__:control"]
+      message =~ [nil, nil, "__absinthe__:control", "phx_join", nil]
     })
 
     transport.disconnect()

@@ -187,21 +187,21 @@ class MockServer {
   func waitForMessage(
     timeout: Double = 5,
     action: () -> Void,
-    test: @escaping (_ message: [String : Any]) -> Bool
+    test: @escaping (_ message: [Any]) -> Bool
   ) -> DispatchTimeoutResult {
     didReceiveMessageSemaphore = DispatchSemaphore(value: 0)
 
     didReceiveMessageCallback = { (data: Data) in
-      os_log("[MS] Received message: %s", log: .default, type: .debug, data as NSData)
+      os_log("[MS] Received message: %s", log: .default, type: .debug, String(decoding: data, as: UTF8.self))
 
       do {
-        let message = try JSONSerialization.jsonObject(with: data, options: [])
+        let message = try JSONSerialization.jsonObject(with: data, options: []) as! [Any]
 
-        if test(message as! [String : Any]) {
+        if test(message) {
           self.didReceiveMessageSemaphore?.signal()
         }
       } catch {
-        os_log("[MS] Invalid message: %s", log: .default, type: .error, data as NSData)
+        os_log("[MS] Invalid message: %s", log: .default, type: .error, String(decoding: data, as: UTF8.self))
       }
     }
 

@@ -7,6 +7,19 @@ func =~(lhs: [String: Any], rhs: [String: Any]) -> Bool {
   return NSDictionary(dictionary: subset).isEqual(to: rhs)
 }
 
+func =~(lhs: [Any?], rhs: [Any?]) -> Bool {
+  for (index, el) in rhs.enumerated() {
+    if el != nil {
+      let a = lhs[index]
+      let b = rhs[index]
+      guard a is AnyHashable else { return false }
+      guard b is AnyHashable else { return false }
+      if (a as! AnyHashable) != (b as! AnyHashable) { return false }
+    }
+  }
+  return true
+}
+
 class ASTTestCase: XCTestCase {
   static var mockServer: MockServer!
   var mockServer: MockServer!
@@ -42,7 +55,7 @@ class ASTTestCase: XCTestCase {
   func assertReceiveMessage(
     timeout: Double = 5,
     action: () -> Void,
-    test: ((_ message: [String : Any]) -> Bool)? = nil
+    test: ((_ message: [Any]) -> Bool)? = nil
   ) {
     if let test = test {
       XCTAssert(

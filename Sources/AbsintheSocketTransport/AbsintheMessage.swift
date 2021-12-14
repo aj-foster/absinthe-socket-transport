@@ -57,7 +57,7 @@ enum AbsintheMessage {
     operation: Operation,
     message: Message
   ) -> Result<GraphQLResult<Operation.Data>, Error> {
-    guard let response = message.payload as? [String: Any]
+    guard let response = message.payload as [String: Any]?
     else {
       return .failure(AbsintheError(kind: .parseError, payload: message.payload))
     }
