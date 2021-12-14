@@ -42,7 +42,16 @@ let transport = AbsintheSocketTransport(endpoint, params: ["token": token])
 let client = ApolloClient(networkTransport: transport, store: ApolloStore.init())
 ```
 
-Although untested, this transport might also work as part of a `SplitNetworkTransport`.
+This transport also works as part of a `SplitNetworkTransport`, which could be configured such as:
+
+```swift
+let normalTransport: RequestChainNetworkTransport = ...  // Your normal http transport
+let absintheSocketTransport = AbsintheSocketTransport(endpoint, params: ["token": token])
+let splitTransport = SplitNetworkTransport(
+  uploadingNetworkTransport: normalTransport,
+  webSocketNetworkTransport: absintheSocketTransport
+)
+```
 
 For debugging purposes, you can enable a printout of all socket messages (including keepalives):
 
